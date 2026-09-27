@@ -1,137 +1,239 @@
-let order = [];
-let clickedOrder = [];
-let score = 0;
+const pads = [...document.querySelectorAll('.pad')];
+const board = document.querySelector('#genius-board');
+const startButton = document.querySelector('#start-button');
+const resetButton = document.querySelector('#reset-button');
+const soundToggle = document.querySelector('#sound-toggle');
+const levelEl = document.querySelector('#level');
+const bestScoreEl = document.querySelector('#best-score');
+const statusEl = document.querySelector('#status');
+const progressBar = document.querySelector('#progress-bar');
+const coreNumber = document.querySelector('#core-number');
 
-//0 - verde
-//1 - azul
-//2 - amarelo
-//3 - vermelho
-//4 - laranja
-//5 - marrom
-//6 - rosa
-//7 - roxo
-//8 - preto
+const PAD_COUNT = 9;
+const FLASH_MS = 360;
+const BETWEEN_FLASH_MS = 170;
 
-const blue = document.querySelector('.blue');
-const green = document.querySelector('.green');
-const red = document.querySelector('.red');
-const yellow = document.querySelector('.yellow');
-const brown = document.querySelector('.brown');
-const orange = document.querySelector('.orange');
-const purple = document.querySelector('.purple');
-const pink = document.querySelector('.pink');
-const black = document.querySelector('.black');
+let sequence = [];
+let playerSequence = [];
+let acceptingInput = false;
+let gameStarted = false;
+let soundEnabled = true;
+let audioContext = null;
+let playbackToken = 0;
+let bestScore = Number(localStorage.getItem('genius-best-score') || 0);
 
-//Sorteia cor
-let shuffleOrder = () => {
-    let colorOrder = Math.floor(Math.random() * 9);
-    order[order.length] = colorOrder;
-    clickedOrder = [];
+const frequencies = [261.63, 293.66, 329.63, 349.23, 392, 440, 493.88, 523.25, 587.33];
 
-    
-    for(let i in order) {
-        let elementColor = createElementColor(order[i]);
-        lightColor(elementColor, Number(i)+1);
-    }
+bestScoreEl.textContent = bestScore;
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function setStatus(message) {
+  statusEl.textContent = message;
 }
 
-//Acende a próxima cor
-let lightColor = (element, number) => {
-    number = number * 500;
-    setTimeout(() => {
-        element.classList.add('selected');
-    }, number);
-    setTimeout(()=>{
-       element.classList.remove('selected'); 
-    }, (number-250));
+function setBoardEnabled(enabled) {
+  acceptingInput = enabled;
+  board.setAttribute('aria-disabled', String(!enabled));
+  pads.forEach(pad => {
+    pad.disabled = !enabled;
+  });
 }
 
-//checa se o clique foi feito na cor
-let checkOrder = () => {
-    for(let i in clickedOrder) {
-        if(clickedOrder[i]!= order[i]) {
-            gameOver();
-            break;
-        }
-    }
-    if(clickedOrder.length == order.length) {
-        alert('Pontuação: '+score+'\nVocê acertou! Iniciando o próximo nível!');
-        nextLevel();
-    }
+function updateProgress() {
+  const total = sequence.length || 1;
+  const value = gameStarted ? (playerSequence.length / total) * 100 : 0;
+  progressBar.style.width = `${Math.min(value, 100)}%`;
 }
 
-//função para o clique do usuário
-let click = (color) => {
-    clickedOrder[clickedOrder.length] = color;
-    createElementColor(color).classList.add('selected');
-
-    setTimeout(() => {
-        createElementColor(color).classList.remove('selected');
-        checkOrder();
-    });   
+function updateScore() {
+  levelEl.textContent = sequence.length;
+  coreNumber.textContent = gameStarted ? sequence.length : PAD_COUNT;
 }
 
-//criar a a função que retorna a cor
-let createElementColor = (color) => {
-    if(color == 0){
-        return green;
-    } else if(color == 1){
-        return blue;
-    } else if(color == 2){
-        return yellow;
-    } else if(color == 3){
-        return red;
-    } else if(color == 4){
-        return orange;
-    } else if(color == 5){
-        return brown;
-    } else if(color == 6){
-        return pink;
-    } else if(color == 7){
-        return purple;
-    } else if(color == 8){
-        return black;
-    }
+function ensureAudio() {
+  if (!soundEnabled) return null;
+  if (!audioContext) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    audioContext = new AudioCtx();
+  }
+  if (audioContext.state === 'suspended') audioContext.resume();
+  return audioContext;
 }
 
-//funcao para proximo nivel do jogo
-let nextLevel = () => {
-   shuffleOrder();
-   score ++;  
+function playTone(colorIndex, duration = 150) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = 'sine';
+  oscillator.frequency.value = frequencies[colorIndex];
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.11, ctx.currentTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / 1000);
+
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  oscillator.start();
+  oscillator.stop(ctx.currentTime + duration / 1000 + 0.02);
 }
 
-//função para game over
-let gameOver = () => {
-    alert('Pontuação: '+score+'!\nVocê perdeu o jogo!\nClique em OK para iniciar um novo jogo!');
-    order = [];
-    clickedOrder = [];
-    playGame();
+async function flashPad(colorIndex, duration = FLASH_MS) {
+  const pad = pads.find(item => Number(item.dataset.color) === colorIndex);
+  if (!pad) return;
+  pad.classList.add('selected');
+  playTone(colorIndex, Math.min(duration, 220));
+  await sleep(duration);
+  pad.classList.remove('selected');
 }
 
-//função de início do jogo
-let playGame = () => {
-    alert('Bem-vindo ao jogo Genius!');
-    nextLevel();
-    score = 0;
+function randomColor() {
+  return Math.floor(Math.random() * PAD_COUNT);
 }
 
-green.addEventListener('click', click(0));
-green.onclick = () => click(0);
-red.addEventListener('click', click(3));
-red.onclick = () => click(3);
-yellow.addEventListener('click', click(2));
-yellow.onclick = () => click(2);
-blue.addEventListener('click', click(1));
-blue.onclick = () => click(1);
-orange.addEventListener('click', click(4));
-orange.onclick = () => click(4);
-brown.addEventListener('click', click(5));
-brown.onclick = () => click(5);
-pink.addEventListener('click', click(6));
-pink.onclick = () => click(6);
-purple.addEventListener('click', click(7));
-purple.onclick = () => click(7);
-black.addEventListener('click', click(8));
-black.onclick = () => click(8);
+async function playSequence() {
+  const token = ++playbackToken;
+  setBoardEnabled(false);
+  board.classList.add('is-watching');
+  setStatus('Observe a sequência');
+  progressBar.style.width = '0%';
 
-playGame();
+  await sleep(450);
+
+  for (const color of sequence) {
+    if (token !== playbackToken || !gameStarted) return;
+    await flashPad(color);
+    await sleep(BETWEEN_FLASH_MS);
+  }
+
+  if (token !== playbackToken || !gameStarted) return;
+  board.classList.remove('is-watching');
+  playerSequence = [];
+  updateProgress();
+  setStatus('Sua vez');
+  setBoardEnabled(true);
+}
+
+async function nextLevel() {
+  sequence.push(randomColor());
+  updateScore();
+  await playSequence();
+}
+
+function saveBestScore() {
+  const completedLevels = Math.max(sequence.length - 1, 0);
+  if (completedLevels > bestScore) {
+    bestScore = completedLevels;
+    localStorage.setItem('genius-best-score', String(bestScore));
+    bestScoreEl.textContent = bestScore;
+    return true;
+  }
+  return false;
+}
+
+async function handleSuccess() {
+  setBoardEnabled(false);
+  progressBar.style.width = '100%';
+  setStatus('Perfeito. Próximo nível!');
+  await sleep(700);
+  if (gameStarted) nextLevel();
+}
+
+async function gameOver() {
+  setBoardEnabled(false);
+  const wasRecord = saveBestScore();
+  playbackToken++;
+  board.classList.remove('is-watching');
+  board.classList.add('is-error');
+  setStatus(wasRecord ? 'Novo recorde! Tente de novo.' : 'Sequência incorreta. Tente novamente.');
+  playTone(8, 420);
+
+  await sleep(420);
+  board.classList.remove('is-error');
+  startButton.textContent = 'Jogar novamente';
+  startButton.disabled = false;
+  gameStarted = false;
+  resetButton.disabled = true;
+}
+
+async function handlePadInput(colorIndex) {
+  if (!acceptingInput || !gameStarted) return;
+
+  const currentIndex = playerSequence.length;
+  playerSequence.push(colorIndex);
+  updateProgress();
+  await flashPad(colorIndex, 150);
+
+  if (colorIndex !== sequence[currentIndex]) {
+    gameOver();
+    return;
+  }
+
+  if (playerSequence.length === sequence.length) {
+    handleSuccess();
+  }
+}
+
+function resetGameState() {
+  playbackToken++;
+  sequence = [];
+  playerSequence = [];
+  gameStarted = false;
+  setBoardEnabled(false);
+  board.classList.remove('is-watching', 'is-error');
+  updateScore();
+  updateProgress();
+}
+
+function startGame() {
+  ensureAudio();
+  resetGameState();
+  gameStarted = true;
+  startButton.disabled = true;
+  startButton.textContent = 'Em jogo';
+  resetButton.disabled = false;
+  setStatus('Preparando primeira sequência');
+  nextLevel();
+}
+
+function restartGame() {
+  resetGameState();
+  startButton.disabled = false;
+  startButton.textContent = 'Começar jogo';
+  resetButton.disabled = true;
+  setStatus('Pronto para jogar');
+}
+
+pads.forEach(pad => {
+  pad.addEventListener('click', () => handlePadInput(Number(pad.dataset.color)));
+});
+
+startButton.addEventListener('click', startGame);
+resetButton.addEventListener('click', restartGame);
+
+soundToggle.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  soundToggle.setAttribute('aria-pressed', String(soundEnabled));
+  soundToggle.setAttribute('aria-label', soundEnabled ? 'Desativar sons' : 'Ativar sons');
+  soundToggle.querySelector('span:first-child').textContent = soundEnabled ? '♪' : '×';
+  if (soundEnabled) playTone(0, 100);
+});
+
+document.addEventListener('keydown', event => {
+  if (event.repeat) return;
+
+  if (event.key === 'Enter' && !gameStarted && !startButton.disabled) {
+    startGame();
+    return;
+  }
+
+  const numeric = Number(event.key);
+  if (numeric >= 1 && numeric <= 9) {
+    const pad = pads[numeric - 1];
+    if (pad) handlePadInput(Number(pad.dataset.color));
+  }
+});
+
+restartGame();

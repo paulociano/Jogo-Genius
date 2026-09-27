@@ -1,28 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-
-    <title>Genius</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f1020">
+  <meta name="description" content="Genius, um jogo de memória em nove cores. Observe a sequência e repita sem errar.">
+  <title>Genius · Jogo da Memória</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="main-game">
-        <div class="genius">
-            <div class="cores">
-                <div class="blue"></div>
-                <div class="orange"></div>
-                <div class="red"></div>
-                <div class="purple"></div>
-                <div class="yellow"></div>
-                <div class="green"></div>
-                <div class="pink"></div>
-                <div class="brown"></div>
-                <div class="black"></div>
-            </div>
+  <main class="app-shell">
+    <section class="game-card" aria-labelledby="game-title">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow">MEMÓRIA + RITMO</p>
+          <h1 id="game-title">Genius<span>.</span></h1>
+          <p class="subtitle">Observe a sequência. Repita as cores. Vá o mais longe que conseguir.</p>
         </div>
-        <div class="scoreboard"></div>
-    <script type="text/javascript" src="script.js"></script>
+        <button class="sound-toggle" id="sound-toggle" type="button" aria-pressed="true" aria-label="Desativar sons">
+          <span aria-hidden="true">♪</span>
+          <span>Som</span>
+        </button>
+      </header>
+
+      <section class="status-grid" aria-label="Status do jogo">
+        <div class="stat">
+          <span class="stat-label">Nível</span>
+          <strong id="level">0</strong>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Recorde</span>
+          <strong id="best-score">0</strong>
+        </div>
+        <div class="stat stat-wide">
+          <span class="stat-label">Status</span>
+          <strong id="status" role="status" aria-live="polite">Pronto para jogar</strong>
+        </div>
+      </section>
+
+      <div class="progress-track" aria-hidden="true">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+
+      <section class="board-wrap" aria-label="Tabuleiro do Genius">
+        <div class="genius" id="genius-board" aria-disabled="true">
+          <div class="cores">
+            <button class="pad blue" data-color="1" aria-label="Azul"></button>
+            <button class="pad purple" data-color="7" aria-label="Roxo"></button>
+            <button class="pad red" data-color="3" aria-label="Vermelho"></button>
+            <button class="pad green" data-color="0" aria-label="Verde"></button>
+            <button class="pad black" data-color="8" aria-label="Preto"></button>
+            <button class="pad pink" data-color="6" aria-label="Rosa"></button>
+            <button class="pad yellow" data-color="2" aria-label="Amarelo"></button>
+            <button class="pad brown" data-color="5" aria-label="Marrom"></button>
+            <button class="pad orange" data-color="4" aria-label="Laranja"></button>
+          </div>
+          <div class="board-core" aria-hidden="true">
+            <span id="core-number">9</span>
+            <small>cores</small>
+          </div>
+        </div>
+      </section>
+
+      <footer class="game-actions">
+        <button class="primary-action" id="start-button" type="button">Começar jogo</button>
+        <button class="secondary-action" id="reset-button" type="button" disabled>Reiniciar</button>
+      </footer>
+
+      <p class="hint">Dica: depois de começar, você também pode usar as teclas <kbd>1</kbd> a <kbd>9</kbd>.</p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
 </body>
 </html>
